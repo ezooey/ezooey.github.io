@@ -1,30 +1,41 @@
-import React, { useEffect, useState } from "react";
-import { autoService } from "../fBase";
+import React, { useState, useEffect } from "react";
 import AppRouter from "./Router";
+import { authService } from "../firebaseInstance";
 
 function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [init, setInit] = useState(false);
-
-  // 사용자 알기 위해
-  const [userObj, setUserObj] = useState(null);
+  const [userObj, setUserObj] = useState("");
 
   useEffect(() => {
-    autoService.onAuthStateChanged((user) => {
+    authService.onAuthStateChanged((user) => {
       if (user) {
+        setIsLoggedIn(true);
         setUserObj(user);
       } else {
+        setIsLoggedIn(false);
+        setUserObj(null);
       }
       setInit(true);
     });
-  }, []);
+  });
+
+  const refreshUser = () => {
+    setUserObj(Object.assign({}, authService.currentUser));
+  };
 
   return (
     <>
       {init ? (
-        <AppRouter isLoggedIn={Boolean(userObj)} userObj={userObj} />
+        <AppRouter
+          refreshUser={refreshUser}
+          isLoggedIn={isLoggedIn}
+          userObj={userObj}
+        />
       ) : (
-        "Initializing....."
+        "Initializing..."
       )}
+      <footer>&copy; {new Date().getFullYear()} Nwitter</footer>
     </>
   );
 }

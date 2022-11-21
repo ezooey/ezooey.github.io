@@ -1,58 +1,62 @@
 import React, { useEffect, useState } from "react";
-import { autoService, dbService } from "../fBase";
-import { useNavigate } from "react-router-dom";
+import { signOut, updateProfile } from "firebase/auth";
+import { useHistory } from "react-router-dom";
+import { authService, dbService } from "firebaseInstance";
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  QuerySnapshot,
+  getDocs,
+} from "firebase/firestore";
 
-const Profile = ({ userObj }) => {
-  var tmpName = null;
-  var name = null;
-  if (userObj.displayName == null) {
-    tmpName = userObj.bc.email.split("@");
-    name = tmpName[0];
-  }
-
+const Profile = ({ refreshUser, userObj }) => {
+  const history = useHistory();
+  const [newDisplayName, setNewDisplayName] = useState(userObj.displayName);
   const onLogOutClick = () => {
-    autoService.signOut();
-
-    // gh-pages용
-    window.location.replace("/jswitter");
+    signOut(authService);
+    history.push("/");
   };
 
-  const getMyJsweets = async () => {
-    const jsweets = await dbService
-      .collection("jsweets")
-      .where("creatorId", "==", `${userObj.uid}`)
-      .orderBy("createAt")
-      .get();
-    console.log(jsweets.docs.map((doc) => doc.data()));
+  const getMyNweets = async () => {
+    const nweetsRef = await collection(dbService, "nweets");
+
+    const nweetsQuery = await query(
+      collection(dbService, "nweets"),
+      where("creatorId", "==", userObj.uid),
+      orderBy("createdAt")
+    );
+
+    const querySnapshot = await getDocs(nweetsQuery);
+    querySnapshot.forEach((doc) => {
+      console.log(doc.data());
+    });
   };
 
-  useEffect(() => {
-    getMyJsweets();
-  }, []);
+  const onChange = (event) => {
+    const {
+      target: { value },
+    } = event;
 
-  // gmail 가입과 email 가입 구분
-  const [newDisplayName, setNewDisplayName] = useState(
-    userObj.displayName !== null ? userObj.displayName : name
-  );
+    setNewDisplayName(value);
+  };
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (event) => {
+    event.preventDefault();
+
     if (userObj.displayName !== newDisplayName) {
-      await userObj.updateProfile({
+      await updateProfile(userObj, {
         displayName: newDisplayName,
       });
-
-      window.alert("Profile is Changed!");
-
-      // gh-pages용
-      window.location.replace("/jswitter");
+      refreshUser();
+      setNewDisplayName("");
     }
   };
 
-  // 프로필 닉네임 변경
-  const onChange = (e) => {
-    setNewDisplayName(e.target.value);
-  };
+  useEffect(() => {
+    //getMyNweets();
+  });
 
   return (
     <div className="container">
@@ -60,15 +64,14 @@ const Profile = ({ userObj }) => {
         <input
           onChange={onChange}
           type="text"
-          placeholder="Display name"
-          value={newDisplayName}
           autoFocus
+          placeholder="이름"
+          value={newDisplayName}
           className="formInput"
-          maxLength="30"
         />
         <input
           type="submit"
-          value="Update Profile"
+          value="프로필 업데이트"
           className="formBtn"
           style={{
             marginTop: 10,
@@ -76,7 +79,7 @@ const Profile = ({ userObj }) => {
         />
       </form>
       <span className="formBtn cancelBtn logOut" onClick={onLogOutClick}>
-        Log Out
+        로그아웃
       </span>
     </div>
   );

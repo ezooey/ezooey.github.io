@@ -1,48 +1,43 @@
-import React, { useState } from "react";
-import {
-  BrowserRouter,
-  HashRouter,
-  Navigate,
-  Route,
-  Router,
-  Routes,
-} from "react-router-dom";
+import React from "react";
+import { HashRouter as Router, Route, Switch } from "react-router-dom";
 import Auth from "../routes/Auth";
-import Home from "../routes/Home";
-import Profile from "../routes/Profile";
+import Home from "../routes/home";
 import Navigation from "./Navigation";
+import Profile from "routes/Profile";
 
-const AppRouter = ({ isLoggedIn, userObj }) => {
+const AppRouter = ({ refreshUser, isLoggedIn, userObj }) => {
   return (
-    //Navigation으로 userObj를 보낸다.
-    <HashRouter base="/">
+    <Router>
       {isLoggedIn && <Navigation userObj={userObj} />}
-      <div
-        style={{
-          maxWidth: 890,
-          width: "100%",
-          margin: "0 auto",
-          marginTop: 80,
-          display: "flex",
-          justifyContent: "center",
-        }}
-      >
-        <Routes>
-          {isLoggedIn ? (
-            <>
-              <Route path="/" element={<Home userObj={userObj} />} />
 
-              <Route path="/profile" element={<Profile userObj={userObj} />} />
-            </>
+      <Switch>
+        <>
+          {isLoggedIn ? (
+            <div
+              style={{
+                maxWidth: 890,
+                width: "100%",
+                margin: "0 auto",
+                marginTop: 80,
+                display: "flex",
+                justifyContent: "center",
+              }}
+            >
+              <Route exact path="/">
+                <Home userObj={userObj} />
+              </Route>
+              <Route exact path="/profile">
+                <Profile userObj={userObj} refreshUser={refreshUser} />
+              </Route>
+            </div>
           ) : (
-            <>
-              <Route path="/" element={<Auth />} />
-              <Route path="*" element={<Navigate replace to="/" />} />
-            </>
+            <Route exact path="/">
+              <Auth />
+            </Route>
           )}
-        </Routes>
-      </div>
-    </HashRouter>
+        </>
+      </Switch>
+    </Router>
   );
 };
 

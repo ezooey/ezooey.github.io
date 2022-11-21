@@ -1,71 +1,77 @@
-import React, { useRef, useState } from "react";
-import Jsweet from "./Jsweet";
-import { dbService, storageService } from "../fBase";
+import React, { useState, useRef } from "react";
+import { dbService, storageService } from "firebaseInstance";
+import { addDoc, collection } from "firebase/firestore";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
 import { v4 as uuidv4 } from "uuid";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faTimes } from "@fortawesome/free-solid-svg-icons";
 
-const JsweetFactory = ({ userObj }) => {
-  // firebase에 jsweet로 저장
-  const [jsweet, setJsweet] = useState("");
-
-  // 파일 URL 저장
+const NweetFactory = ({ userObj }) => {
+  const [nweet, setNweet] = useState("");
   const [attachment, setAttachment] = useState("");
 
-  // 사진 clear 누른 후 file input에 남아있는 이미지 파일명을 지우기 위해 useRef 사용
   const fileInput = useRef();
 
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    if (jsweet === "") {
+  const onSubmit = async (event) => {
+    if (nweet === "") {
       return;
     }
+
+    event.preventDefault();
     let attachmentUrl = "";
     if (attachment !== "") {
-      const attachmentRef = storageService
-        .ref()
-        .child(`${userObj.uid}/${uuidv4()}`);
-      const response = await attachmentRef.putString(attachment, "data_url");
-      attachmentUrl = await response.ref.getDownloadURL();
-    }
-    const jsweetObj = {
-      text: jsweet,
-      createAt: Date.now(),
-      creatorId: userObj.uid,
-      attachmentUrl,
-    };
+      const fileRef = ref(storageService, `${userObj.uid}/${uuidv4()}`);
 
-    await dbService.collection("jsweets").add(jsweetObj);
-    setJsweet("");
-    setAttachment("");
+      const response = await uploadString(fileRef, attachment, "data_url");
+      attachmentUrl = await getDownloadURL(response.ref);
+    }
+
+    try {
+      const docRef = await addDoc(collection(dbService, "nweets"), {
+        text: nweet,
+        createdAt: Date.now(),
+        creatorId: userObj.uid,
+        attachmentUrl,
+      });
+      console.log("Document written with ID:", docRef.id);
+    } catch (error) {
+      console.log(error);
+    }
+
+    setNweet("");
+    onClearAttachment();
   };
 
-  const onChange = (e) => {
+  const onChange = (event) => {
     const {
       target: { value },
-    } = e;
-    setJsweet(value);
+    } = event;
+
+    setNweet(value);
   };
 
-  const onFileChange = (e) => {
+  const onFileChange = (event) => {
     const {
       target: { files },
-    } = e;
-    const theFile = files[0];
+    } = event;
+
+    const file = files[0];
+
     const reader = new FileReader();
     reader.onloadend = (finishedEvent) => {
       const {
         currentTarget: { result },
       } = finishedEvent;
+
       setAttachment(result);
     };
-    reader.readAsDataURL(theFile);
+
+    reader.readAsDataURL(file);
   };
 
-  // 사진 clear버튼 눌렀을 때
   const onClearAttachment = () => {
-    fileInput.current.value = null;
     setAttachment("");
+    fileInput.current.value = "";
   };
 
   return (
@@ -73,19 +79,18 @@ const JsweetFactory = ({ userObj }) => {
       <div className="factoryInput__container">
         <input
           className="factoryInput__input"
-          value={jsweet}
+          value={nweet}
           onChange={onChange}
           type="text"
-          placeholder="Input Your Tweet"
+          placeholder="무슨 일이 일어나고 있나요?"
           maxLength={120}
         />
         <input type="submit" value="&rarr;" className="factoryInput__arrow" />
       </div>
       <label htmlFor="attach-file" className="factoryInput__label">
-        <span>Add photos</span>
+        <span>사진 첨부</span>
         <FontAwesomeIcon icon={faPlus} />
       </label>
-
       <input
         id="attach-file"
         type="file"
@@ -94,14 +99,15 @@ const JsweetFactory = ({ userObj }) => {
         style={{
           opacity: 0,
         }}
+        ref={fileInput}
       />
-
       {attachment && (
         <div className="factoryForm__attachment">
           <img
             src={attachment}
-            style={{ backgroundImage: attachment }}
-            ref={fileInput}
+            style={{
+              backgroundImage: attachment,
+            }}
           />
           <div className="factoryForm__clear" onClick={onClearAttachment}>
             <span>Remove</span>
@@ -113,4 +119,4 @@ const JsweetFactory = ({ userObj }) => {
   );
 };
 
-export default JsweetFactory;
+export default NweetFactory;
